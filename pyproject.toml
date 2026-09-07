@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "corpus-cleaner"
+version = "0.1.0"
+description = "Offline corpus cleaning CLI tool for multilingual markdown/text files"
+requires-python = ">=3.10"
+dependencies = [
+    "fast-langdetect",
+    "openpyxl",
+    "chardet",
+    "ftfy",
+]
+
+[project.scripts]
+corpus-clean = "corpus_clean:main"
+
+[tool.setuptools.packages.find]
+include = ["corpus_cleaner*"]
+
+[tool.pytest.ini_options]
+tmp_path_retention_policy = "failed"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
