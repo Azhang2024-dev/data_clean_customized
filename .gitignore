@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Project runtime output
+corpus_cleaned/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Temp / one-off scripts output
+tmp_*.json
+
+# Tool metadata
+.codegraph/
+.omo/
+tmp_*
+
+# Agent tooling leftovers (not part of this tool)
+.agents/
+.claude/
+skills-lock.json
