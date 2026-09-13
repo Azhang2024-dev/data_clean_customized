@@ -1,4 +1,4 @@
----
+﻿---
 name: corpus-cleaner
 description: >
   语料清洗批处理工具。处理任意目录下的语料文件：重命名、去重、表格过滤、OCR 污染处理、长度标记。支持 quick/standard/thorough 三档预设。
