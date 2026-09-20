@@ -1,8 +1,8 @@
 """OCR contamination handler — detects and cleans OCR noise.
 
 Implements Stage 3 of the corpus cleaning pipeline:
-- Per-line contaminant character scoring with CJK / embedded-Latin /
-  garbled-sequence rules per primary language.
+- Per-line contaminant character scoring with lang-aware CJK / embedded-Latin /
+  garbled-sequence rules per primary language (CJK native langs exempt Han).
 - Whitelist exemption via i18n_tokens.RE_WHITELIST.
 - Code-block line exemption.
 - 95th-percentile aggregation for robust file-level score.
@@ -72,7 +72,7 @@ def compute_contamination(
        every line — those are legitimate bilingual content.
     3. For each non-code-block, non-empty line:
        a. Find contaminant character positions:
-          - CJK characters (all languages).
+          - CJK characters (non-CJK primary languages only; zh/ja/ko exempt).
           - Embedded Latin 1-3 chars between Arabic/Cyrillic (AR / RU).
           - Garbled sequences ≥3 consecutive non-alnum symbols (FR).
        b. Compute ``fraction = contaminant_count / total_chars_in_line``.
@@ -198,15 +198,43 @@ def _is_cjk(char: str) -> bool:
     return any(lo <= cp <= hi for lo, hi in _CJK_RANGES)
 
 
+# Languages for which Han/CJK script is expected primary (or bilingual allowlist).
+# When primary_lang is in this set, Han characters are NOT treated as contaminants.
+_CJK_NATIVE_LANGS = frozenset({
+    "ZH", "ZH-CN", "ZH-TW", "ZH-HK", "CN", "CHINESE", "CHI", "ZHO",
+    "JA", "JP", "JAPANESE", "JPN",
+    "KO", "KR", "KOREAN", "KOR",
+})
+
+
+def _lang_allows_cjk(primary_lang: str) -> bool:
+    """Return True if *primary_lang* (or bilingual allowlist) treats Han as native."""
+    if not primary_lang:
+        return False
+    code = str(primary_lang).strip().upper().replace(" ", "")
+    if code in _CJK_NATIVE_LANGS:
+        return True
+    # bilingual allowlist forms: "EN+ZH", "ZH/EN", "AR,ZH"
+    for sep in ("+", "/", ",", ";", "|"):
+        if sep in code:
+            parts = [p.strip() for p in code.split(sep) if p.strip()]
+            if any(p in _CJK_NATIVE_LANGS for p in parts):
+                return True
+    return False
+
+
 def _is_contaminant_char(char: str, primary_lang: str) -> bool:
     """Determine whether a single character is a contaminant for *primary_lang*.
 
-    Per the plan, CJK characters are contaminants in all five supported
-    languages.  Embedded-Latin and garbled-sequence patterns require
-    multi-character context and are handled at the line level by
-    ``compute_contamination``, not here.
+    CJK/Han characters are contaminants for non-CJK primary languages (AR/RU/FR/EN/ID…).
+    If primary_lang is zh (or a bilingual allowlist that includes zh/ja/ko), Han is
+    treated as native script and is NOT flagged as a contaminant (P2.7).
+    Embedded-Latin and garbled-sequence patterns require multi-character context
+    and are handled at the line level by ``compute_contamination``, not here.
     """
-    return _is_cjk(char)
+    if _is_cjk(char):
+        return not _lang_allows_cjk(primary_lang)
+    return False
 
 
 def _strip_whitelist(text: str, pattern: re.Pattern[str] | None = None) -> str:
