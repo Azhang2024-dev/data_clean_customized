@@ -7,6 +7,7 @@ import pytest
 from corpus_cleaner.ocr_handler import (
     _is_contaminant_char,
     _is_independent_span,
+    _lang_allows_cjk,
     _mark_code_blocks,
     _strip_whitelist,
     clean_content,
@@ -31,14 +32,40 @@ class TestIsContaminantChar:
             ("\u6f22", "EN"),
             ("\u5b57", "AR"),  # 字 — CJK
             ("\u4e2d", "RU"),  # 中 — CJK
+            ("\u6f22", "ID"),
         ],
     )
-    def test_cjk_char_flagged_for_all_languages(
+    def test_cjk_char_flagged_for_non_cjk_languages(
         self, char: str, primary_lang: str
     ) -> None:
         """Given a CJK character, _is_contaminant_char returns True
-        for every supported primary language."""
+        for non-CJK primary languages (AR/RU/FR/EN/ID)."""
         assert _is_contaminant_char(char, primary_lang) is True
+
+    @pytest.mark.parametrize(
+        "char,primary_lang",
+        [
+            ("\u6f22", "ZH"),
+            ("\u4e2d", "zh"),
+            ("\u5b57", "ZH-CN"),
+            ("\u6f22", "EN+ZH"),  # bilingual allowlist includes zh
+            ("\u6f22", "JA"),
+            ("\u6f22", "KO"),
+        ],
+    )
+    def test_cjk_char_not_contaminant_for_cjk_native_langs(
+        self, char: str, primary_lang: str
+    ) -> None:
+        """Han is native for zh/ja/ko (and bilingual allowlists with zh)."""
+        assert _lang_allows_cjk(primary_lang) is True
+        assert _is_contaminant_char(char, primary_lang) is False
+
+    def test_zh_content_contamination_score_near_zero(self) -> None:
+        """Pure Chinese text under primary_lang=ZH must not be flagged contaminated."""
+        content = "这是一段中文内容，用于验证汉字不被当作污染。\n第二行同样是汉字。"
+        score, details = compute_contamination(content, "ZH")
+        assert score == 0.0
+        assert all(d["contaminant_chars"] == 0 for d in details)
 
     @pytest.mark.parametrize(
         "char,primary_lang",
