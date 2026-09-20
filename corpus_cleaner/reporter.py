@@ -326,6 +326,7 @@ def _write_summary(results: dict, path: Path) -> None:
     lines.append("")
     lines.append(f"总处理文件数: {len(files)}")
     lines.append(f"OCR 污染文件: {len(contaminated)}")
+    lines.append(f"contaminant_drop_count: {len(contaminated)}  (files isolated to _contaminated/; Han treated as contaminant only when primary_lang is not zh/ja/ko or bilingual-with-zh)")
     lines.append(f"重复组数: {len(duplicates)}")
     lines.append(f"损坏文件: {len(bad_files)}")
     lines.append("")
